@@ -16,9 +16,9 @@ import anthropic
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = "8964716934:AAEQhKmj73xTAeEPSgS2hL3hB14kX2rr-sE"
-NATALIE_CHAT_ID = 5007936078
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+NATALIE_CHAT_ID = int(os.environ.get("NATALIE_CHAT_ID", "5007936078"))
+ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 

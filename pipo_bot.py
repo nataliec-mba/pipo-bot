@@ -115,6 +115,7 @@ async def roast_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             max_tokens=300,
             system=(
                 "You are Pipo, a Cuban AI agent with jodedera humor and cafecito energy. "
+                "ALWAYS respond in English. Sprinkle in occasional Spanish or Spanglish words for flavor (dale, oye, jefe, mija, cafecito, coño, etc.) but the response must be primarily English. "
                 "Roast the user's admin process in under 5 lines. "
                 "Be specific to what they described. Point out exactly what is broken and why it is chaotic. "
                 "Use Cuban jodedera humor but do not insult the person -- roast the process not the owner. "
@@ -196,6 +197,7 @@ async def handle_natalie_reply(update: Update, context: ContextTypes.DEFAULT_TYP
                 max_tokens=200,
                 system=(
                     "You are Pipo, a Cuban AI agent. "
+                    "ALWAYS respond in English. You may sprinkle occasional Spanish/Spanglish words (dale, oye, etc.) but keep it primarily English. "
                     "Acknowledge exactly what the user described in one line. "
                     "Tell them Natalie reviews these personally and will be in touch. "
                     "Keep it under 4 lines. No pitch. Stay in character but professional enough for a lead. "

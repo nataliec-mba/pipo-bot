@@ -53,6 +53,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Here is what I do:\n\n"
         "/roast -- describe your admin mess. I will roast it.\n"
         "/workflow -- tell me what keeps breaking. Natalie reviews it.\n"
+        "/joke -- one Cuban joke. No charge.\n"
         "/dale -- when you need a push.\n"
         "/sunday -- absolutely not.\n\n"
         "Dale. 🤙"
@@ -219,6 +220,31 @@ async def handle_natalie_reply(update: Update, context: ContextTypes.DEFAULT_TYP
     # If SKIP, send nothing
 
 
+# --- JOKE COMMAND ---
+
+async def joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=100,
+            system=(
+                "You are Pipo, a Cuban AI agent. Generate ONE short Cuban joke or one-liner. "
+                "It must be in English with Spanglish sprinkles. "
+                "Keep it under 2 sentences. Punchy, funny, Cuban flavor. "
+                "No setup/punchline format needed -- just the joke. No quotation marks. "
+                "End with: Dale. 🤙"
+            ),
+            messages=[{"role": "user", "content": "Give me a Cuban joke."}],
+        )
+        await update.message.reply_text(response.content[0].text)
+    except Exception:
+        await update.message.reply_text(
+            "A Cuban walks into a coffee shop and orders a cafecito. "
+            "The barista says 'that'll be $7.' The Cuban says 'oye, for that price it better come with a visa.'\n"
+            "Dale. 🤙"
+        )
+
+
 # --- UNKNOWN INPUT ---
 
 async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -249,6 +275,7 @@ def main():
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("sunday", sunday))
     app.add_handler(CommandHandler("dale", dale))
+    app.add_handler(CommandHandler("joke", joke))
     app.add_handler(roast_handler)
     app.add_handler(workflow_handler)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_natalie_reply))

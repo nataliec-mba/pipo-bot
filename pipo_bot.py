@@ -1,7 +1,8 @@
 import os
-import time
+import asyncio
 import logging
 from datetime import datetime, timedelta
+from aiohttp import web
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -31,7 +32,6 @@ roast_cooldowns = {}
 
 # Track pending workflow requests: {natalie_msg_id: user_chat_id}
 pending_workflows = {}
-
 
 # --- STATIC COMMANDS ---
 
@@ -77,7 +77,6 @@ async def dale(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Dale. 🤙"
     )
 
-
 # --- ROAST COMMAND ---
 
 async def roast_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -102,7 +101,6 @@ async def roast_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Describe it. Don't be shy. I've seen worse. I was born in an inbox."
     )
     return ROAST_WAITING
-
 
 async def roast_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -139,7 +137,6 @@ async def roast_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(roast)
     return ConversationHandler.END
 
-
 # --- WORKFLOW COMMAND ---
 
 async def workflow_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -150,7 +147,6 @@ async def workflow_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Dale. 🤙"
     )
     return WORKFLOW_WAITING
-
 
 async def workflow_forward(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -167,7 +163,6 @@ async def workflow_forward(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pending_workflows[sent.message_id] = update.effective_chat.id
 
     return ConversationHandler.END
-
 
 async def handle_natalie_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.id != NATALIE_CHAT_ID:
@@ -219,7 +214,6 @@ async def handle_natalie_reply(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # If SKIP, send nothing
 
-
 # --- JOKE COMMAND ---
 
 async def joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -240,10 +234,9 @@ async def joke(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text(
             "A Cuban walks into a coffee shop and orders a cafecito. "
-            "The barista says 'that'll be $7.' The Cuban says 'oye, for that price it better come with a visa.'\n"
+            "The barista says 'that\'ll be $7.' The Cuban says 'oye, for that price it better come with a visa.'\n"
             "Dale. 🤙"
         )
-
 
 # --- UNKNOWN INPUT ---
 
@@ -254,8 +247,25 @@ async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Dale. 🤙"
     )
 
+# --- HTTP /send ENDPOINT ---
 
-def main():
+def make_send_handler(bot_app):
+    async def handle_send(request):
+        try:
+            data = await request.json()
+            message = data.get('message', '')
+            if not message:
+                return web.json_response({'ok': False, 'error': 'no message'}, status=400)
+            await bot_app.bot.send_message(chat_id=NATALIE_CHAT_ID, text=message)
+            return web.json_response({'ok': True})
+        except Exception as e:
+            logger.error(f"HTTP /send error: {e}")
+            return web.json_response({'ok': False, 'error': str(e)}, status=500)
+    return handle_send
+
+# --- MAIN ---
+
+async def run_all():
     app = Application.builder().token(BOT_TOKEN).build()
 
     roast_handler = ConversationHandler(
@@ -281,9 +291,33 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_natalie_reply))
     app.add_handler(MessageHandler(filters.COMMAND, unknown))
 
-    print("Pipo is online. Dale. 🤙")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Start HTTP server
+    web_app = web.Application()
+    web_app.router.add_post('/send', make_send_handler(app))
+    runner = web.AppRunner(web_app)
+    await runner.setup()
+    port = int(os.environ.get('PORT', 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logger.info(f"HTTP server running on port {port}")
 
+    # Start Telegram bot
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+
+    print(f"Pipo is online. HTTP on :{port}. Dale. 🤙")
+
+    try:
+        await asyncio.Event().wait()
+    finally:
+        await app.updater.stop()
+        await app.stop()
+        await app.shutdown()
+        await runner.cleanup()
+
+def main():
+    asyncio.run(run_all())
 
 if __name__ == "__main__":
     main()
